@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken'); 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const PDFDocument = require('pdfkit'); 
+const path = require('path'); // <--- Added this required import
 
 const Queue = require('./models/Queue');
 const User = require('./models/User'); 
@@ -365,6 +366,15 @@ app.delete('/api/token/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Delete failed" }); }
 });
 
+// --- 9. DEPLOYMENT STATIC FILES ---
+// This serves the React Frontend when deployed
+app.use(express.static(path.join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// --- SERVER START ---
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on Port ${PORT}`);
