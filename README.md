@@ -4,11 +4,6 @@
 
 ---
 
-## 🚀 Live Demo
-**[Click here to view the Live Application](https://vitalsync-syuf.onrender.com)** *(Replace with your actual Render URL if different)*
-
----
-
 ## ✨ Key Features
 
 ### 🧠 AI-Powered Triage & Assistance
@@ -53,5 +48,26 @@ Follow these steps to run the project on your local machine.
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/YOUR_USERNAME/Modern_problem_solving.git](https://github.com/YOUR_USERNAME/Modern_problem_solving.git)
+git clone [https://github.com/12302080601001/Modern_problem_solving.git]
 cd Modern_problem_solving
+
+### Setup Backend (Server)
+Navigate to the server folder and install dependencies:
+cd VitalSync/server
+npm install
+
+### Configure Environment Variables: Create a .env file inside the VitalSync/server folder and add the following keys:
+
+PORT=3001
+MONGO_URI=your_mongodb_connection_string
+GEMINI_API_KEY=your_google_gemini_api_key
+JWT_SECRET=your_secret_key
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+
+### Start the Server:
+cd VitalSync/client
+npm install
+
+### Start the React app:
+npm run dev
