@@ -18,17 +18,16 @@ const { sendTicket, sendPrescriptionEmail } = require('./emailService');
 const app = express();
 const server = http.createServer(app);
 
-// --- 1. CONFIGURATION (FIXED CORS) ---
-// This explicit configuration fixes the "Network Error" on the frontend
+// --- 1. CONFIGURATION ---
 app.use(cors({
-    origin: "*",  // Allow connections from anywhere (Render/Localhost)
+    origin: "*",  
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
 
 app.use(express.json());
 
-// --- 2. SETUP GEMINI AI ---
+// --- 2. SETUP GEMINI AI (UNTOUCHED) ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -245,7 +244,7 @@ app.post('/api/email-prescription', async (req, res) => {
 
 // --- 7. SOCKET.IO SETUP ---
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] } // Allow all origins for Socket too
+  cors: { origin: "*", methods: ["GET", "POST"] } 
 });
 
 // --- 8. QUEUE MANAGEMENT ---
@@ -260,12 +259,22 @@ app.get('/api/queue', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- CRITICAL FIX: Safe Booking & Email Handling ---
 app.post('/api/book', async (req, res) => {
   try {
     const { name, email, department, isEmergency, symptoms } = req.body;
     const selectedDept = department || 'General';
 
-    let aiDetectedEmergency = symptoms ? await checkUrgency(symptoms) : false;
+    // AI Check
+    let aiDetectedEmergency = false;
+    if (symptoms) {
+        try {
+            aiDetectedEmergency = await checkUrgency(symptoms);
+        } catch (aiError) {
+            console.error("AI Check Failed (Continuing):", aiError.message);
+        }
+    }
+
     const finalPriority = (isEmergency || aiDetectedEmergency) ? 1 : 0;
     const finalStatus = (isEmergency || aiDetectedEmergency) ? 'WAITING' : 'PENDING';
 
@@ -281,20 +290,32 @@ app.post('/api/book', async (req, res) => {
 
     await newTicket.save();
 
+    // --- EMAIL FIX START ---
     if (email) {
-      // Logic: If on localhost, use 5173 (Frontend Port). If on Render, use the current host (Prod URL).
-      const protocol = req.secure ? 'https' : 'http';
-      const host = req.get('host').includes('localhost') 
-          ? req.get('host').replace('3001', '5173') 
-          : req.get('host');
-      const trackLink = `${protocol}://${host}/track/${newTicket.tokenNumber}`;
-      
-      sendTicket(email, name, newTicket.tokenNumber, trackLink);
+      try {
+        const protocol = req.secure ? 'https' : 'http';
+        const host = req.get('host').includes('localhost') 
+            ? req.get('host').replace('3001', '5173') 
+            : req.get('host');
+        const trackLink = `${protocol}://${host}/track/${newTicket.tokenNumber}`;
+        
+        console.log(`📧 Sending email to ${email}...`);
+        
+        // Added 'await' so we catch errors here inside the try block
+        await sendTicket(email, name, newTicket.tokenNumber, trackLink);
+        
+        console.log("✅ Email sent successfully");
+      } catch (emailError) {
+        // Log the error but DO NOT crash the server
+        console.error("⚠️ Email Failed (Booking saved):", emailError.message);
+      }
     }
+    // --- EMAIL FIX END ---
 
     io.emit('queue_update');
     res.json({ success: true, token: nextTokenNum, aiFlag: aiDetectedEmergency });
   } catch (err) {
+    console.error("🔥 Critical Booking Error:", err);
     res.status(500).json({ success: false, message: "Booking failed" });
   }
 });
@@ -358,8 +379,7 @@ app.delete('/api/token/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: "Delete failed" }); }
 });
 
-// --- 9. DEPLOYMENT STATIC FILES (FIXED PATH) ---
-// Note: We look in '../client/dist' because your 'dist' is in the client folder, not server.
+// --- 9. DEPLOYMENT STATIC FILES ---
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 app.get('*', (req, res) => {
