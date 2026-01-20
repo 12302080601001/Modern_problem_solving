@@ -1,26 +1,26 @@
 const nodemailer = require('nodemailer');
 
-// --- CONFIGURATION (FIXED FOR RENDER IPV4) ---
+// --- CONFIGURATION: Port 587 (TLS) with IPv4 ---
+// Port 587 is the standard submission port and works best on cloud servers like Render.
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
+  port: 587,
+  secure: false, // Must be false for port 587 (it uses STARTTLS)
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // ⚠️ CRITICAL FIX: Force IPv4. Render/Docker sometimes fails with IPv6.
-  family: 4, 
-  // Increase timeouts to 30 seconds to be safe
-  connectionTimeout: 30000, 
-  greetingTimeout: 30000,
-  socketTimeout: 30000
+  tls: {
+    ciphers: "SSLv3",
+    rejectUnauthorized: false // Helps avoid SSL handshake errors on cloud servers
+  },
+  family: 4 // ⚠️ CRITICAL: Forces IPv4. Prevents IPv6 connection timeouts.
 });
 
 // 1. Send Ticket (Booking Confirmation)
 const sendTicket = async (to, name, token, link) => {
   try {
-    console.log(`📧 Preparing to send ticket to ${to}...`);
+    console.log(`📧 Attempting to send ticket to ${to}...`);
     
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -40,31 +40,21 @@ const sendTicket = async (to, name, token, link) => {
         </div>
       `
     };
-    
-    // Verify connection before sending (Optional debugging)
-    await new Promise((resolve, reject) => {
-        transporter.verify(function (error, success) {
-            if (error) {
-                console.log("❌ SMTP Connection Check Failed:", error.message);
-                reject(error);
-            } else {
-                console.log("✅ SMTP Connection Established");
-                resolve(success);
-            }
-        });
-    });
 
+    // Send the email
     await transporter.sendMail(mailOptions);
     console.log(`✅ Email sent successfully to ${to}`);
   } catch (error) {
-    console.error(`❌ Transporter Error (Ticket):`, error.message);
-    throw error;
+    // We log the error but do NOT throw it, so the server keeps running
+    console.error(`❌ Email Failed (Ticket):`, error.message);
   }
 };
 
 // 2. Send Prescription PDF
 const sendPrescriptionEmail = async (to, name, pdfBuffer) => {
   try {
+    console.log(`📧 Attempting to send prescription to ${to}...`);
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to,
@@ -80,16 +70,16 @@ const sendPrescriptionEmail = async (to, name, pdfBuffer) => {
       attachments: [
         {
           filename: `Prescription-${name}.pdf`,
-          content: pdfBuffer, 
+          content: pdfBuffer,
           contentType: 'application/pdf'
         }
       ]
     };
+
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Prescription sent to ${to}`);
+    console.log(`✅ Prescription sent successfully to ${to}`);
   } catch (error) {
-    console.error(`❌ Transporter Error (Prescription):`, error.message);
-    throw error;
+    console.error(`❌ Email Failed (Prescription):`, error.message);
   }
 };
 
