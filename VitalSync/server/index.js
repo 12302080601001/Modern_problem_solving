@@ -31,7 +31,7 @@ app.use(express.json());
 // --- 2. SETUP GEMINI AI ---
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Using flash model for speed
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // --- 3. DATABASE CONNECTION ---
 mongoose.connect(process.env.MONGO_URI)
