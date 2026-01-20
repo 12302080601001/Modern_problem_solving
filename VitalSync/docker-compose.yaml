@@ -8,8 +8,8 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - MONGO_URI=mongodb+srv://admin:vital12345@cluster0.ddtht.mongodb.net/vitalsync?retryWrites=true&w=majority&appName=Cluster0
-      - GEMINI_API_KEY=AIzaSyDIyfFvrYwspU-MhImu9YlgpyuzpShPv00
+      - MONGO_URI=""
+      - GEMINI_API_KEY=""
       - JWT_SECRET=mysecret
 
   # Service 2: The Frontend Website
