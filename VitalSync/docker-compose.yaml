@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  # Service 1: The Backend API
+  server:
+    build: ./server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb+srv://admin:vital12345@cluster0.ddtht.mongodb.net/vitalsync?retryWrites=true&w=majority&appName=Cluster0
+      - GEMINI_API_KEY=AIzaSyDIyfFvrYwspU-MhImu9YlgpyuzpShPv00
+      - JWT_SECRET=mysecret
+
+  # Service 2: The Frontend Website
+  client:
+    build: ./client
+    ports:
+      - "80:80"  # Opens your app on localhost:80
+    depends_on:
+      - server
